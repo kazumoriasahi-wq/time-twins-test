@@ -1,0 +1,10 @@
+const assert=require('node:assert/strict'),E=require('./engine.js');let count=0;function test(n,f){f();console.log('PASS '+n);count++;}function wait(s,t){for(let i=0;i<Math.ceil(t/.02);i++)E.tick(s,.02);}function walk(s,p,force=false){const route=E.path(s,p,force);assert(route.length||E.same(s.p,p),'path exists');for(const n of route){let budget=100;while(!E.same(s.p,n)&&budget--){E.tick(s,.02,[n[0]-s.p[0],n[1]-s.p[1]]);}assert(E.same(s.p,n),'move succeeds');} }
+test('Twin appears after exactly three seconds',()=>{let s=E.create();wait(s,2.98);assert.equal(s.echo,null);wait(s,.02);assert.deepEqual(s.echo,s.l.start);});
+test('Recorded movement is replayed with three-second delay',()=>{let s=E.create();E.tick(s,.02,[1,0]);const moved=[...s.p];wait(s,2.98);assert.deepEqual(s.echo,s.l.start);wait(s,.02);assert.deepEqual(s.echo,moved);});
+test('Player alone cannot activate an echo plate',()=>{let s=E.create();walk(s,s.l.a);assert(!s.open);assert(!E.path(s,s.l.goal).length);});
+test('Reset removes the previous timeline',()=>{let s=E.create();wait(s,4);s=E.create();assert.equal(s.echo,null);assert.equal(s.t,0);assert(!s.open);});
+for(let i=0;i<E.COUNT;i++)test('Chapter '+(i+1)+' has a playable timed solution',()=>{let s=E.create(i);walk(s,s.l.a);wait(s,3.3);if(s.l.b)walk(s,s.l.b);wait(s,.04);assert(s.open,'door opens through actual plate condition');if(i>=8)assert(s.t<=s.exitUntil,'exit circuit is activated');walk(s,s.l.goal,true);assert(s.won,'goal reached before latch closes');assert(s.pulses>=1);});
+test('Door closes after the grace period',()=>{let s=E.create();walk(s,s.l.a);wait(s,3.3);walk(s,[1,1]);wait(s,7);assert(!s.open);});
+test('Late chapters need the blue circuit as well as the echo',()=>{let s=E.create(8);walk(s,s.l.a);wait(s,3.3);assert(s.open);assert(s.exitUntil<0);});
+test('Walking cannot cross a closed gate',()=>{let s=E.create();walk(s,[4,4]);for(let i=0;i<20;i++)E.tick(s,.02,[1,0]);assert.deepEqual(s.p,[4,4]);assert(!s.won);});
+console.log(count+' meaningful checks passed');
